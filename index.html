@@ -1,376 +1,438 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neu in Produktion</title>
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <style>
-        .carousel-container {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 10px 0;
-        }
-        .product-card {
-            flex: 0 0 auto; /* Cards bleiben nebeneinander */
-            width: 350px;
-            margin: 0 10px;
-        }
-        .product-card img {
-            width: 100%;
-            height: auto;
-        }
-        .product-card .card-body {
-            text-align: center;
-        }
-        .product-card .card-text {
-            font-size: 0.9rem;
-            word-wrap: break-word; /* Lange Wörter umbrechen */
-            white-space: normal; /* Text wird normal umbrochen */
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid p-3 mb-5">
-    <div id="alert-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1055;"></div>
-        <h1 class="text-center mb-3">„Neu in Produktion“</h1>
-          <!-- Warenkorb Button -->
-          <div class="float-end">
-              <button id="open-cart" class="btn btn-primary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
-  <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l1.313 7h8.17l1.313-7zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
-</svg>
-              </button>
-          </div>
-          <!-- Warenkorb Modal -->
-          <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-xl">
-                  <div class="modal-content">
-                      <div class="modal-header">
-                          <h5 class="modal-title" id="cartModalLabel">Zusammenstellung</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                          <ul id="cart-items" class="list-group">
-                              <!-- Dynamische Inhalte -->
-                          </ul>
-                      </div>
-                      <div class="modal-footer">
-                          <button id="copy-ids" class="btn btn-secondary">IDs kopieren</button>
-                          <button id="delete-ids" class="btn btn-danger">Alles löschen</button>
-                          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Schließen</button>
-                      </div>
-                  </div>
-              </div>
-          </div>
-          <!-- Datumauswahl -->
-          <div class="input-group input-group w-50 mx-auto mb-5">
-              <span class="input-group-text">Zeitraum</span>
-              <input type="date" id="start-date" class="form-control">
-              <input type="date" id="end-date" class="form-control">
-              <button id="search-btn" class="btn btn-outline-primary" type="button">Aktualisieren</button>
-          </div>
-          <!-- Zeitraum-Anzeige -->
-          <h2 id="date-range" class="text-center mb-3"></h2>
-          <!-- Spinner während des Ladens -->
-          <div id="loading-spinner" class="d-flex justify-content-center d-none">
-              <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Lade...</span>
-              </div>
-          </div>
-          <!-- Container für Produktgruppen -->
-          <div id="product-groups" class="d-none"></div>
-    </div>
-    <!-- Bootstrap JS und Abhängigkeiten -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script>
-        // Hilfsfunktion, um das Datum für Solr im passenden Format zu erzeugen
-        function formatSolrDate(date) {
-            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}*`;
-        }
-
-        // Funktion, um das Standarddatum (letzte Woche) zu setzen
-        function setDefaultDates() {
-            const today = new Date();
-            const lastWeek = new Date();
-            lastWeek.setDate(today.getDate() - 7);
-
-            document.getElementById('start-date').value = lastWeek.toISOString().split('T')[0];
-            document.getElementById('end-date').value = today.toISOString().split('T')[0];
-        }
-
-        // Funktion zum Extrahieren der Thumbnail-URL aus dem XML
-        function getThumbnailUrl(previewStore) {
-            try {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(previewStore, "text/xml");
-                const nsResolver = (prefix) => {
-                    if (prefix === "ns") {
-                        return "http://www.deutsche-digitale-bibliothek.de/cortex";
-                    }
-                    return null;
-                };
-                const thumbnailNode = xmlDoc.evaluate("//ns:thumbnail", xmlDoc, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                const thumbnailHref = thumbnailNode.getAttribute("href");
-                return `https://iiif.deutsche-digitale-bibliothek.de/image/2/${thumbnailHref}/full/800,/0/default.jpg`;
-            } catch (error) {
-                console.error("Fehler beim Parsen von preview_store:", error);
-                return "https://via.placeholder.com/350"; // Platzhalterbild
+    <head>
+        <meta charset="UTF-8">
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <title>Neu in Produktion</title>
+        <!-- Bootstrap CSS -->
+        <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+        <style>
+            .carousel-container {
+                display: flex;
+                gap: 10px;
+                overflow-x: auto;
+                padding: 10px 0;
             }
-        }
-
-        // Funktion zum Aktualisieren der Suche
-        async function loadGroups(startDate, endDate) {
-            const from = formatSolrDate(new Date(startDate));
-            const to = formatSolrDate(new Date(endDate));
-
-            // Suchzeitraum anzeigen
-            const dateRangeElement = document.getElementById('date-range');
-            dateRangeElement.textContent = `Suchzeitraum: ${startDate} bis ${endDate}`;
-            const random = Math.floor(Math.random() * 10000);
-
-            const apiUrl = `https://api.deutsche-digitale-bibliothek.de/2/search/index/search/select?q=last_update:[${from} TO ${to}] AND digitalisat:true&group=true&group.sort=random_${random} desc&group.field=provider_id&fl=id,title,dataset_id,preview_store&group.limit=100&rows=1000000`;
-
-            try {
-                const productGroups = document.getElementById('product-groups');
-                productGroups.innerHTML = ''; // Vorherige Inhalte löschen
-
-                // Spinner anzeigen
-                document.getElementById('loading-spinner').classList.remove('d-none');
-                const response = await fetch(apiUrl);
-                const data = await response.json();
-
-                productGroups.classList.remove('d-none');
-
-                // Spinner ausblenden
-                document.getElementById('loading-spinner').classList.add('d-none');
-
-                for (const group of data.grouped.provider_id.groups) {
-                    renderGroup(group, productGroups);
-                    await updateGroupHeader(group.groupValue);
-
+            
+            .product-card {
+                flex: 0 0 auto; /* Cards bleiben nebeneinander */
+                width: 350px;
+                margin: 0 10px;
+            }
+            
+            .product-card img {
+                width: 100%;
+                height: auto;
+            }
+            
+            .product-card .card-body {
+                text-align: center;
+            }
+            
+            .product-card .card-text {
+                font-size: 0.9rem;
+                word-wrap: break-word; /* Lange Wörter umbrechen */
+                white-space: normal; /* Text wird normal umbrochen */
+            }
+            
+            .fab {
+                position: fixed;
+                bottom: 30px; /* Abstand vom oberen Rand */
+                right: 30px; /* Abstand vom rechten Rand */
+                z-index: 1050; /* Über anderen Inhalten */
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Schatteneffekt */
+                transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            }
+            
+            .fab:hover {
+                transform: scale(1.1); /* Vergrößert den Button leicht beim Hover */
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4); /* Schattenintensität erhöht sich */
+            }
+            
+            /* Farbverlauf nur sichtbar, wenn die Klasse has-gradient hinzugefügt wird */
+            .image-container.has-gradient::after {
+                content: "";
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 100px; /* Höhe des Farbverlaufs */
+                background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 1.0)); /* Farbverlauf */
+                pointer-events: none; /* Sicherstellen, dass Klicks durchgehen */
+            }</style>
+    </head>
+    <body>
+        <div class="container-fluid p-3 mb-5">
+            <div class="alert-container position-fixed top-0 start-50 translate-middle mt-5" id="alert-container" style="z-index: 1056;"></div>
+            <h1 class="text-center mb-3">„Neu in Produktion“</h1>
+            <!-- Warenkorb Button -->
+            <button class="btn btn-primary btn-lg rounded-circle fab" id="open-cart" type="button">
+                <i class="bi bi-cart"></i>
+            </button>
+            <!-- Warenkorb Modal -->
+            <div aria-hidden="true" aria-labelledby="cartModalLabel" class="modal fade" id="cartModal" tabindex="-1">
+                <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="cartModalLabel">Zusammenstellung</h5>
+                            <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                        </div>
+                        <div class="modal-body">
+                            <ul class="list-group" id="cart-items">
+                                <!-- Dynamische Inhalte -->
+                            </ul>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" id="copy-ids">IDs kopieren</button>
+                            <button class="btn btn-danger" id="delete-ids">Alles löschen</button>
+                            <button class="btn btn-primary" data-bs-dismiss="modal" type="button">Schließen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Datumauswahl -->
+            <div class="col-12 col-md-12 col-xl-6 mx-auto mb-5">
+                <div class="input-group input-group">
+                    <span class="input-group-text col-12 col-md-auto">Zeitraum</span>
+                    <input class="form-control col-12 col-m" id="start-date" type="date">
+                    <input class="form-control col-12 col-m" id="end-date" type="date">
+                    <button class="btn btn-outline-primary col-12 col-md-auto" id="search-btn" type="button">Aktualisieren </button>
+                </div>
+            </div>
+            <!-- Zeitraum-Anzeige -->
+            <h2 class="text-center mb-3" id="date-range">&#160;</h2>
+            <!-- Spinner während des Ladens -->
+            <div class="d-flex justify-content-center d-none" id="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Lade...</span>
+                </div>
+            </div>
+            <!-- Container für Produktgruppen -->
+            <div class="d-none" id="product-groups"></div>
+        </div>
+        <!-- Bootstrap JS und Abhängigkeiten -->
+        <script crossorigin="anonymous" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+        <script crossorigin="anonymous" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+        <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        <script>
+            // Hilfsfunktion, um das Datum für Solr im passenden Format zu erzeugen
+            function formatSolrDate(date) {
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}*`;
+            }
+            
+            // Funktion, um das Standarddatum (letzte Woche) zu setzen
+            function setDefaultDates() {
+                const today = new Date();
+                const lastWeek = new Date();
+                lastWeek.setDate(today.getDate() - 7);
+                
+                document.getElementById('start-date').value = lastWeek.toISOString().split('T')[0];
+                document.getElementById('end-date').value = today.toISOString().split('T')[0];
+            }
+            
+            // Funktion zum Extrahieren der Thumbnail-URL aus dem XML
+            function getThumbnailUrl(previewStore) {
+                try {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(previewStore, "text/xml");
+                    const nsResolver = (prefix) => {
+                        if (prefix === "ns") {
+                            return "http://www.deutsche-digitale-bibliothek.de/cortex";
+                        }
+                        return null;
+                    };
+                    const thumbnailNode = xmlDoc.evaluate("//ns:thumbnail", xmlDoc, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    const thumbnailHref = thumbnailNode.getAttribute("href");
+                    return `https://iiif.deutsche-digitale-bibliothek.de/image/2/${thumbnailHref}/full/800,/0/default.jpg`;
                 }
-            } catch (error) {
-                console.error('Fehler beim Abrufen der Daten:', error);
-                showAlert(`Daten konnten nicht geladen werden.`, 'danger');
+                catch (error) {
+                    console.error("Fehler beim Parsen von preview_store:", error);
+                    return "https://via.placeholder.com/350";
+                    // Platzhalterbild
+                }
             }
-        }
-
-        // Funktion zum Rendern einer Gruppe
-        async function renderGroup(group, container) {
-            const groupTitle = group.groupValue;
-            const items = group.doclist.docs;
-
-            const groupSection = document.createElement('div');
-            groupSection.className = 'mt-5';
-
-            const groupHeader = document.createElement('h3');
-            groupHeader.textContent = groupTitle;
-            groupHeader.id = `group-${groupTitle}`;
-            groupHeader.className = 'group-header';
-
-            const carouselContainer = document.createElement('div');
-            carouselContainer.className = 'carousel-container border bg-light p-5';
-
-            items.forEach((item) => {
-                const card = document.createElement('div');
-                card.className = 'card product-card';
-
-                const img = document.createElement('img');
-                img.className = 'card-img-top';
-                img.src = getThumbnailUrl(item.preview_store);
-                img.alt = item.title;
-                img.setAttribute("onerror", "this.src='https://via.placeholder.com/350';");
-
-                const cardBody = document.createElement('div');
-                cardBody.className = 'card-body';
-
-                const cardTitle = document.createElement('h5');
-                cardTitle.className = 'card-title';
-                cardTitle.textContent = item.title;
-
-                const cardText = document.createElement('p');
-                cardText.className = 'card-text text-muted';
-                cardText.innerHTML = `<a href="https://www.deutsche-digitale-bibliothek.de/item/${item.id}" target="_blank">${item.id}</a><br>Dataset ${item.dataset_id}`;
-
-                const addButton = document.createElement('button');
-                addButton.className = 'btn btn-success btn-sm mt-2';
-                addButton.textContent = 'Zur Zusammenstellung hinzufügen';
-                addButton.addEventListener('click', () => {
-                    addToCart(groupTitle, item.id, img.src, item.title);
-                });
-
-                cardBody.appendChild(cardTitle);
-                cardBody.appendChild(cardText);
-                cardBody.appendChild(addButton);
-                card.appendChild(img);
-                card.appendChild(cardBody);
-                carouselContainer.appendChild(card);
-            });
-
-            groupSection.appendChild(groupHeader);
-            groupSection.appendChild(carouselContainer);
-            container.appendChild(groupSection);
-        }
-
-        // Funktion zum Aktualisieren der Gruppenüberschrift
-        async function updateGroupHeader(groupValue) {
-            const apiUrl = `https://api.deutsche-digitale-bibliothek.de/2/search/index/organization/select?q=id:${groupValue} OR ddb_organization_id:${groupValue}&fl=id,preferredName`;
-
-            try {
-                const response = await fetch(apiUrl);
-                const data = await response.json();
-
-                if (data.response.docs.length > 0) {
-                    const organization = data.response.docs[0];
-                    const preferredName = organization.preferredName;
-                    const id = organization.id;
-                    const groupName = `<a href="https://www.deutsche-digitale-bibliothek.de/organization/${id}" target="_blank">${preferredName}</a>`;
-
-                    // Überschrift im DOM aktualisieren
-                    const header = document.getElementById(`group-${groupValue}`);
-                    if (header) {
-                        header.innerHTML = groupName;
+            
+            // Funktion zum Aktualisieren der Suche
+            async function loadGroups(startDate, endDate) {
+                const from = formatSolrDate(new Date(startDate));
+                const to = formatSolrDate(new Date(endDate));
+                
+                // Suchzeitraum anzeigen
+                const dateRangeElement = document.getElementById('date-range');
+                dateRangeElement.textContent = `Suchzeitraum: ${startDate} bis ${endDate}`;
+                const random = Math.floor(Math.random() * 10000);
+                
+                const apiUrl = `https://api.deutsche-digitale-bibliothek.de/2/search/index/search/select?q=last_update:[${from} TO ${to}] AND digitalisat:true&group=true&group.sort=random_${random} desc&group.field=provider_id&fl=id,title,dataset_id,preview_store&group.limit=100&rows=1000000`;
+                
+                try {
+                    const productGroups = document.getElementById('product-groups');
+                    productGroups.innerHTML = '';
+                    // Vorherige Inhalte löschen
+                    
+                    // Spinner anzeigen
+                    document.getElementById('loading-spinner').classList.remove('d-none');
+                    const response = await fetch(apiUrl);
+                    const data = await response.json();
+                    
+                    productGroups.classList.remove('d-none');
+                    
+                    // Spinner ausblenden
+                    document.getElementById('loading-spinner').classList.add('d-none');
+                    
+                    for (const group of data.grouped.provider_id.groups) {
+                        renderGroup(group, productGroups);
+                        await updateGroupHeader(group.groupValue);
                     }
-
-                    // Gruppennamen im Warenkorb aktualisieren
-                    cart.forEach((item) => {
-                        if (item.group === groupValue) {
-                            item.group = preferredName;
+                }
+                catch (error) {
+                    console.error('Fehler beim Abrufen der Daten:', error);
+                    showAlert(`Daten konnten nicht geladen werden.`, 'danger');
+                }
+            }
+            
+            // Funktion zum Rendern einer Gruppe
+            async function renderGroup(group, container) {
+                const groupTitle = group.groupValue;
+                const items = group.doclist.docs;
+                
+                const groupSection = document.createElement('div');
+                groupSection.className = 'mt-5';
+                
+                const groupHeader = document.createElement('h3');
+                groupHeader.textContent = groupTitle;
+                groupHeader.id = `group-${groupTitle}`;
+                groupHeader.className = 'group-header';
+                
+                const carouselContainer = document.createElement('div');
+                carouselContainer.className = 'carousel-container border bg-light p-5';
+                
+                items.forEach((item) => {
+                    const card = document.createElement('div');
+                    card.className = 'card product-card';
+                    
+                    const imgWrapper = document.createElement('div');
+                    imgWrapper.style = "max-height: 500px; overflow: hidden; position: relative;"
+                    imgWrapper.className = "image-container";
+                    
+                    const img = document.createElement('img');
+                    img.className = 'card-img-top';
+                    img.src = getThumbnailUrl(item.preview_store);
+                    img.alt = item.title;
+                    img.style = "object-fit: cover; object-position: top;";
+                    img.setAttribute("onerror", "this.src='https://via.placeholder.com/350';");
+                    
+                    // Warten, bis das Bild vollständig geladen ist
+                    img.addEventListener("load", function () {
+                        // Überprüfen, ob das Bild höher ist als der Container
+                        if (img.height > imgWrapper.offsetHeight) {
+                            imgWrapper.classList.add("has-gradient");
                         }
                     });
-                    saveCart(); // Änderungen speichern
-                }
-            } catch (error) {
-                console.error(`Fehler beim Abrufen der Überschrift für Gruppe ${groupValue}:`, error);
-            }
-        }
-
-        // Event-Listener für den Button
-        document.getElementById('search-btn').addEventListener('click', () => {
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-            if (!startDate || !endDate) {
-                showAlert(`Bitte Start- und Enddatum eingeben.`, 'warning');
-                return;
-            }
-            loadGroups(startDate, endDate);
-        });
-
-        // Standardmäßig Daten der letzten Woche setzen
-        document.addEventListener('DOMContentLoaded', setDefaultDates);
-
-        // Warenkorb initialisieren
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-        // Warenkorb speichern
-        function saveCart() {
-            localStorage.setItem('cart', JSON.stringify(cart));
-        }
-
-        // Warenkorb aktualisieren
-        function updateCartModal() {
-            const cartItems = document.getElementById('cart-items');
-            cartItems.innerHTML = '';
-
-            cart.forEach((item, index) => {
-                const listItem = document.createElement('li');
-                listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                listItem.dataset.index = index;
-                listItem.setAttribute("role", "button");
-
-                listItem.innerHTML = `
-                    <img src="${item.thumbnail}" alt="${item.title}" style="width: 80px; height: auto; margin-right: 10px;">
-                    <div class="ms-3 flex-fill">
-                      <p class="fw-bold mb-1">${item.group}</p>
-                      <p class="text-muted mb-0">${item.id}</p>
-                    </div>
-                    <button class="btn btn-danger btn-sm delete-item">Löschen</button>
-                `;
-
-                cartItems.appendChild(listItem);
-            });
-
-            // Drag & Drop aktivieren
-            new Sortable(cartItems, {
-                animation: 150,
-                onUpdate: () => {
-                    cart = Array.from(cartItems.children).map((item) => {
-                        const index = item.dataset.index;
-                        return cart[index];
+                    
+                    imgWrapper.appendChild(img);
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body d-flex flex-column';
+                    
+                    const cardTitle = document.createElement('h5');
+                    cardTitle.className = 'card-title text-truncate';
+                    cardTitle.style = 'max-height: 150px;';
+                    cardTitle.textContent = item.title;
+                    cardTitle.setAttribute("data-bs-toggle", "tooltip");
+                    cardTitle.setAttribute("data-bs-placement", "top");
+                    cardTitle.setAttribute("title", item.title);
+                    new bootstrap.Tooltip(cardTitle);
+                    
+                    const cardText = document.createElement('p');
+                    cardText.className = 'card-text text-muted';
+                    cardText.innerHTML = `<a href="https://www.deutsche-digitale-bibliothek.de/item/${item.id}" target="_blank">${item.id}</a><br>Dataset ${item.dataset_id}`;
+                    
+                    const addButton = document.createElement('button');
+                    addButton.className = 'btn btn-success btn-sm mt-auto';
+                    addButton.textContent = 'Zur Zusammenstellung hinzufügen';
+                    addButton.addEventListener('click', () => {
+                        addToCart(groupTitle, item.id, img.src, item.title);
+                        addButton.classList.remove('btn-success');
+                        addButton.classList.add('btn-secondary');
+                        addButton.textContent = 'Zur Zusammenstellung hinzugefügt';
+                        addButton.disabled = true; // Button deaktivieren
                     });
-                    saveCart();
-                    updateCartModal();
-                },
+                    
+                    cardBody.appendChild(cardTitle);
+                    cardBody.appendChild(cardText);
+                    cardBody.appendChild(addButton);
+                    card.appendChild(imgWrapper);
+                    card.appendChild(cardBody);
+                    carouselContainer.appendChild(card);
+                });
+                
+                groupSection.appendChild(groupHeader);
+                groupSection.appendChild(carouselContainer);
+                container.appendChild(groupSection);
+            }
+            
+            // Funktion zum Aktualisieren der Gruppenüberschrift
+            async function updateGroupHeader(groupValue) {
+                const apiUrl = `https://api.deutsche-digitale-bibliothek.de/2/search/index/organization/select?q=id:${groupValue} OR ddb_organization_id:${groupValue}&fl=id,preferredName`;
+                
+                try {
+                    const response = await fetch(apiUrl);
+                    const data = await response.json();
+                    
+                    if (data.response.docs.length > 0) {
+                        const organization = data.response.docs[0];
+                        const preferredName = organization.preferredName;
+                        const id = organization.id;
+                        const groupName = `<a href="https://www.deutsche-digitale-bibliothek.de/organization/${id}" target="_blank">${preferredName}</a>`;
+                        
+                        // Überschrift im DOM aktualisieren
+                        const header = document.getElementById(`group-${groupValue}`);
+                        if (header) {
+                            header.innerHTML = groupName;
+                        }
+                        
+                        // Gruppennamen im Warenkorb aktualisieren
+                        cart.forEach((item) => {
+                            if (item.group === groupValue) {
+                                item.group = preferredName;
+                            }
+                        });
+                        saveCart();
+                        // Änderungen speichern
+                    }
+                }
+                catch (error) {
+                    console.error(`Fehler beim Abrufen der Überschrift für Gruppe ${groupValue}:`, error);
+                }
+            }
+            
+            // Event-Listener für den Button
+            document.getElementById('search-btn').addEventListener('click', () => {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                if (! startDate || ! endDate) {
+                    showAlert(`Bitte Start- und Enddatum eingeben.`, 'warning');
+                    return;
+                }
+                loadGroups(startDate, endDate);
             });
-
-            // Löschen-Buttons
-            cartItems.querySelectorAll('.delete-item').forEach((btn, index) => {
-                btn.addEventListener('click', () => {
-                    cart.splice(index, 1);
-                    saveCart();
-                    updateCartModal();
+            
+            // Standardmäßig Daten der letzten Woche setzen
+            document.addEventListener('DOMContentLoaded', function () {
+                setDefaultDates();
+                document.getElementById("search-btn").click();
+            });
+            
+            // Warenkorb initialisieren
+            let cart = JSON.parse(localStorage.getItem('cart')) ||[];
+            
+            // Warenkorb speichern
+            function saveCart() {
+                localStorage.setItem('cart', JSON.stringify(cart));
+            }
+            
+            // Warenkorb aktualisieren
+            function updateCartModal() {
+                const cartItems = document.getElementById('cart-items');
+                cartItems.innerHTML = '';
+                
+                cart.forEach((item, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item d-flex align-items-center';
+                    listItem.dataset.index = index;
+                    listItem.setAttribute("role", "button");
+                    
+                    listItem.innerHTML = `
+                        <img src="${item.thumbnail}" alt="${item.title}" class="img-fluid" style="width: 80px; height: auto; margin-right: 10px;">
+                        <div class="ms-2 me-2 flex-fill text-truncate">
+                          <p class="fw-bold mb-1 text-truncate">${item.group}</p>
+                          <p class="mb-0 text-truncate">${item.title}</p>
+                          <p class="text-muted mb-0 text-truncate"><small>${item.id}<small></p>
+                        </div>
+                        <button class="btn btn-danger btn-sm delete-item"><i class="bi bi-trash"></i></button>
+                    `;
+                    
+                    cartItems.appendChild(listItem);
+                });
+                
+                // Drag & Drop aktivieren
+                new Sortable(cartItems, {
+                    animation: 150,
+                    onUpdate: () => {
+                        cart = Array. from (cartItems.children).map((item) => {
+                            const index = item.dataset.index;
+                            return cart[index];
+                        });
+                        saveCart();
+                        updateCartModal();
+                    },
+                });
+                
+                // Löschen-Buttons
+                cartItems.querySelectorAll('.delete-item').forEach((btn, index) => {
+                    btn.addEventListener('click', () => {
+                        cart.splice(index, 1);
+                        saveCart();
+                        updateCartModal();
+                    });
+                });
+            }
+            
+            // Produkt zum Warenkorb hinzufügen
+            function addToCart(group, id, thumbnail, title) {
+                const item = {
+                    group: document.querySelector('#group-' + group).textContent,
+                    id,
+                    thumbnail,
+                    title
+                };
+                cart.push(item);
+                saveCart();
+                showAlert(`${id} wurde zur Zusammenstellung hinzugefügt.`, 'success');
+            }
+            
+            // IDs kopieren
+            document.getElementById('copy-ids').addEventListener('click', () => {
+                const ids = cart.map((item) => item.id).join('\n');
+                // console.log(ids);
+                navigator.clipboard.writeText(ids).then(() => {
+                    showAlert(`IDs wurden in die Zwischenablage kopiert.`, 'success');
                 });
             });
-        }
-
-        // Produkt zum Warenkorb hinzufügen
-        function addToCart(group, id, thumbnail, title) {
-            const item = {
-                group: document.querySelector('#group-' + group).textContent,
-                id,
-                thumbnail,
-                title
-            };
-            cart.push(item);
-            saveCart();
-            showAlert(`${id} wurde zur Zusammenstellung hinzugefügt.`, 'success');
-        }
-
-        // IDs kopieren
-        document.getElementById('copy-ids').addEventListener('click', () => {
-            const ids = cart.map((item) => item.id).join('\n');
-            // console.log(ids);
-            navigator.clipboard.writeText(ids).then(() => {
-                showAlert(`IDs wurden in die Zwischenablage kopiert.`, 'success');
+            
+            // IDs löschen
+            document.getElementById('delete-ids').addEventListener('click', () => {
+                cart.splice(0, cart.length);
+                saveCart();
+                updateCartModal();
             });
-        });
-
-        // IDs löschen
-        document.getElementById('delete-ids').addEventListener('click', () => {
-            cart.splice(0, cart.length);
-            saveCart();
-            updateCartModal();
-        });
-
-        // Warenkorb öffnen
-        document.getElementById('open-cart').addEventListener('click', () => {
-            updateCartModal(); // Warenkorb vor dem Anzeigen aktualisieren
-            const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
-            cartModal.show();
-        });
-
-        function showAlert(message, type = 'success', timeout = 3000) {
-            const alertContainer = document.getElementById('alert-container');
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type} alert-dismissible fade show`;
-            alert.setAttribute('role', 'alert');
-            alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-            alertContainer.appendChild(alert);
-
-            // Automatisches Entfernen nach `timeout` Millisekunden
-            setTimeout(() => {
-                alert.classList.remove('show');
-                alert.classList.add('fade');
-                setTimeout(() => alert.remove(), 150); // Entfernen nach Fade-Out
-            }, timeout);
-        }
-    </script>
-</body>
+            
+            // Warenkorb öffnen
+            document.getElementById('open-cart').addEventListener('click', () => {
+                updateCartModal();
+                // Warenkorb vor dem Anzeigen aktualisieren
+                const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+                cartModal.show();
+            });
+            
+            function showAlert(message, type = 'success', timeout = 3000) {
+                const alertContainer = document.getElementById('alert-container');
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type} alert-dismissible fade show`;
+                alert.setAttribute('role', 'alert');
+                alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+                alertContainer.appendChild(alert);
+                
+                // Automatisches Entfernen nach `timeout` Millisekunden
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                    alert.classList.add('fade');
+                    setTimeout(() => alert.remove(), 150);
+                    // Entfernen nach Fade-Out
+                },
+                timeout);
+            }</script>
+    </body>
 </html>
-
