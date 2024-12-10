@@ -152,6 +152,24 @@
     function formatSolrDate(date) {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}*`;
     }
+    
+    function htmlEncode(input) {
+        // Helper-Funktion zum Encodieren eines einzelnen Strings
+        const encodeString = (str) => str.replace(/&/g, '&amp;')
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;')
+                                        .replace(/"/g, '&quot;')
+                                        .replace(/'/g, '&#39;');
+        
+        // Prüfen, ob das Input ein Array ist
+        if (Array.isArray(input)) {
+            return input.map(item => encodeString(item)); // Jedes Element encodieren
+        }
+        
+        // Wenn kein Array, normalen String encodieren
+        return encodeString(input);
+    }
+
     // ####################################################################################################################
 
     // Funktionen für die Thumbnails ######################################################################################
@@ -159,20 +177,20 @@
     function getThumbnailUrl(previewStore) {
         try {
             const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(previewStore, "text/xml");
+            const xmlDoc = parser.parseFromString(previewStore, 'text/xml');
             const nsResolver = (prefix) => {
-                if (prefix === "ns") {
-                    return "http://www.deutsche-digitale-bibliothek.de/cortex";
+                if (prefix === 'ns') {
+                    return 'http://www.deutsche-digitale-bibliothek.de/cortex';
                 }
                 return null;
             };
-            const thumbnailNode = xmlDoc.evaluate("//ns:thumbnail", xmlDoc, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-            const thumbnailHref = thumbnailNode.getAttribute("href");
+            const thumbnailNode = xmlDoc.evaluate('//ns:thumbnail', xmlDoc, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            const thumbnailHref = thumbnailNode.getAttribute('href');
             return `https://iiif.deutsche-digitale-bibliothek.de/image/2/${thumbnailHref}/full/350,/0/default.jpg`;
         } catch (error) {
-            console.error("Fehler beim Parsen von preview_store:", error);
+            console.error('Fehler beim Parsen von preview_store:', error);
             // Platzhalterbild
-            return "https://via.placeholder.com/350";
+            return 'https://via.placeholder.com/350';
         }
     }
     // ####################################################################################################################
@@ -236,21 +254,22 @@
             card.className = 'card product-card';
 
             const imgWrapper = document.createElement('div');
-            imgWrapper.style.cssText = "max-height: 500px; overflow: hidden; position: relative;"
-            imgWrapper.className = "image-container";
+            imgWrapper.style.cssText = 'max-height: 500px; overflow: hidden; position: relative;'
+            imgWrapper.className = 'image-container';
 
             const img = document.createElement('img');
             img.className = 'card-img-top';
             img.src = getThumbnailUrl(item.preview_store);
             img.alt = item.title;
-            img.style.cssText = "object-fit: cover; object-position: top;";
-            img.setAttribute("onerror", "this.src=\"https://via.placeholder.com/350\";");
+            img.style.cssText = 'object-fit: cover; object-position: top;';
+            img.setAttribute('onerror', 'this.src=\'https://via.placeholder.com/350\';');
+            img.setAttribute('loading', 'lazy');
 
             // Warten, bis das Bild vollständig geladen ist
-            img.addEventListener("load", function () {
+            img.addEventListener('load', function () {
                 // Überprüfen, ob das Bild höher ist als der Container
                 if (img.height > imgWrapper.offsetHeight) {
-                    imgWrapper.classList.add("has-gradient");
+                    imgWrapper.classList.add('has-gradient');
                 }
             });
 
@@ -263,9 +282,9 @@
             cardTitle.className = 'card-title text-truncate';
             cardTitle.style.cssText = 'max-height: 150px;';
             cardTitle.textContent = item.title;
-            cardTitle.setAttribute("data-bs-toggle", "tooltip");
-            cardTitle.setAttribute("data-bs-placement", "top");
-            cardTitle.setAttribute("title", item.title);
+            cardTitle.setAttribute('data-bs-toggle', 'tooltip');
+            cardTitle.setAttribute('data-bs-placement', 'top');
+            cardTitle.setAttribute('title', item.title);
             new bootstrap.Tooltip(cardTitle);
 
             const cardText = document.createElement('p');
@@ -273,7 +292,7 @@
             cardText.innerHTML = `
                         <a href="https://www.deutsche-digitale-bibliothek.de/item/${item.id}" target="_blank">${item.id}</a>
                         <br>
-                        Dataset ${item.dataset_id}
+                        Dataset ${htmlEncode(item.dataset_id)}
             `;
 
             const addButton = document.createElement('button');
@@ -312,7 +331,7 @@
                 const organization = data.response.docs[0];
                 const preferredName = organization.preferredName;
                 const id = organization.id;
-                const groupName = `<a href="https://www.deutsche-digitale-bibliothek.de/organization/${id}" target="_blank">${preferredName}</a>`;
+                const groupName = `<a href="https://www.deutsche-digitale-bibliothek.de/organization/${id}" target="_blank">${htmlEncode(preferredName)}</a>`;
 
                 // Überschrift im DOM aktualisieren
                 const header = document.getElementById(`group-${groupValue}`);
@@ -352,13 +371,13 @@
             const listItem = document.createElement('li');
             listItem.className = 'list-group-item d-flex align-items-center';
             listItem.dataset.index = index;
-            listItem.setAttribute("role", "button");
+            listItem.setAttribute('role', 'button');
 
             listItem.innerHTML = `
-                        <img src="${item.thumbnail}" alt="${item.title}" class="img-fluid" style="width: 80px; height: auto; margin-right: 10px;">
+                        <img src="${item.thumbnail}" alt="${htmlEncode(item.title)}" class="img-fluid" style="width: 80px; height: auto; margin-right: 10px;">
                         <div class="ms-2 me-2 flex-fill text-truncate">
-                          <p class="fw-bold mb-1">${item.group}</p>
-                          <p class="mb-0">${item.title}</p>
+                          <p class="fw-bold mb-1">${htmlEncode(item.group)}</p>
+                          <p class="mb-0">${htmlEncode(item.title)}</p>
                           <p class="text-muted mb-0"><small>${item.id}</small></p>
                         </div>
                         <button class="btn btn-danger btn-sm delete-item"><i class="bi bi-trash"></i></button>
@@ -396,8 +415,8 @@
     function showAlert(message, type = 'success', timeout = 1500) {
         const alert = document.createElement('div')
         alert.classList.add('alert', `alert-${type}`, 'alert-dismissible', 'fade', 'show');
-        alert.setAttribute("role", "alert");
-        alert.innerHTML = `<div class="text-break">${message}</div>`;
+        alert.setAttribute('role', 'alert');
+        alert.innerHTML = `<div class="text-break">${htmlEncode(message)}</div>`;
 
         const closeButton = document.createElement('button');
         closeButton.setAttribute('type', 'button');
@@ -477,7 +496,7 @@
         });
 
         // erstes Laden der Seite
-        document.getElementById("search-btn").click();
+        document.getElementById('search-btn').click();
     });
 </script>
 </body>
