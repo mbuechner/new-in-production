@@ -160,14 +160,80 @@
                                         .replace(/>/g, '&gt;')
                                         .replace(/"/g, '&quot;')
                                         .replace(/'/g, '&#39;');
-        
+    
+        // Check, ob input null, undefined oder leer ist
+        if (input === null || input === undefined || input === '') {
+            return input; // Unverändertes Input zurückgeben
+        }
+    
         // Prüfen, ob das Input ein Array ist
         if (Array.isArray(input)) {
-            return input.map(item => encodeString(item)); // Jedes Element encodieren
+            return input.map(item => {
+                // Check, ob item null, undefined oder leer ist
+                if (item === null || item === undefined || item === '') {
+                    return item; // Unverändertes Element zurückgeben
+                }
+                return encodeString(item); // Element encodieren
+            });
         }
-        
+    
         // Wenn kein Array, normalen String encodieren
         return encodeString(input);
+    }
+    
+    function getCcLicenseAbbreviation(uri) {
+      const ccLicenses = {
+        "creativecommons.org/licenses/by/4.0": "CC BY 4.0",
+        "creativecommons.org/licenses/by-sa/4.0": "CC BY-SA 4.0",
+        "creativecommons.org/licenses/by-nd/4.0": "CC BY-ND 4.0",
+        "creativecommons.org/licenses/by-nc/4.0": "CC BY-NC 4.0",
+        "creativecommons.org/licenses/by-nc-sa/4.0": "CC BY-NC-SA 4.0",
+        "creativecommons.org/licenses/by-nc-nd/4.0": "CC BY-NC-ND 4.0",
+        "creativecommons.org/publicdomain/zero/1.0": "CC0 1.0",
+        "creativecommons.org/publicdomain/mark/1.0": "Public Domain Mark 1.0",
+        "creativecommons.org/licenses/by/3.0": "CC BY 3.0",
+        "creativecommons.org/licenses/by-sa/3.0": "CC BY-SA 3.0",
+        "creativecommons.org/licenses/by-nd/3.0": "CC BY-ND 3.0",
+        "creativecommons.org/licenses/by-nc/3.0": "CC BY-NC 3.0",
+        "creativecommons.org/licenses/by-nc-sa/3.0": "CC BY-NC-SA 3.0",
+        "creativecommons.org/licenses/by-nc-nd/3.0": "CC BY-NC-ND 3.0",
+        "www.deutsche-digitale-bibliothek.de/lizenzen/nug-kkn": "Nicht urheberrechtlich geschützt – Keine kommerzielle Nachnutzung",
+        "www.deutsche-digitale-bibliothek.de/lizenzen/vw": "Verwaistes Werk",
+        "www.deutsche-digitale-bibliothek.de/lizenzen/unbekannt": "Rechtsstatus unbekannt",
+        "www.deutsche-digitale-bibliothek.de/lizenzen/rv-ez": "Rechte vorbehalten – Zugang nach Autorisierung",
+        "www.deutsche-digitale-bibliothek.de/lizenzen/rv-fz": "Rechte vorbehalten – Freier Zugang",
+      };
+    
+      // Funktion zur Normalisierung und Umwandlung einer einzelnen URI
+      function processSingleUri(singleUri) {
+        if (typeof singleUri !== "string") {
+          return singleUri; // Übergabewert im Fehlerfall zurückgeben
+        }
+    
+        // Normalisiere die URI: Entferne http/https und ein abschließendes /
+        let normalizedUri = singleUri.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    
+        // Suche nach bekannten Lizenzen in der URI
+        for (const license in ccLicenses) {
+          if (normalizedUri.startsWith(license)) {
+            return ccLicenses[license]; // Rückgabe des passenden Kürzels
+          }
+        }
+    
+        return singleUri; // Rückgabe der URI im Fehlerfall
+      }
+    
+      if (uri === null || uri === undefined || uri === '') {
+        return 'Keine Lizenz verfügbar';
+      }
+    
+      // Wenn die URI ein Array ist, verarbeite jedes Element
+      if (Array.isArray(uri)) {
+        return uri.map(processSingleUri);
+      }
+    
+      // Andernfalls verarbeite die URI als einzelnen Wert
+      return processSingleUri(uri);
     }
 
     // ####################################################################################################################
@@ -206,7 +272,7 @@
         dateRangeElement.textContent = `Suchzeitraum: ${startDate} bis ${endDate}`;
         const random = Math.floor(Math.random() * 10000);
 
-        const apiUrl = `https://api.deutsche-digitale-bibliothek.de/2/search/index/search/select?q=last_update:[${from} TO ${to}] AND digitalisat:true&group=true&group.sort=random_${random} desc&group.field=provider_id&fl=id,title,dataset_id,preview_store&group.limit=100&rows=1000000`;
+        const apiUrl = `https://api.deutsche-digitale-bibliothek.de/2/search/index/search/select?q=last_update:[${from} TO ${to}] AND digitalisat:true&group=true&group.sort=random_${random} desc&group.field=provider_id&fl=id,title,dataset_id,license,preview_store&group.limit=100&rows=1000000`;
 
         try {
             const productGroups = document.getElementById('product-groups');
@@ -281,7 +347,7 @@
             const cardTitle = document.createElement('h5');
             cardTitle.className = 'card-title text-truncate';
             cardTitle.style.cssText = 'max-height: 150px;';
-            cardTitle.textContent = item.title;
+            cardTitle.innerHTML = `<a href="https://www.deutsche-digitale-bibliothek.de/item/${item.id}" target="_blank">${htmlEncode(item.title)}</a>`;
             cardTitle.setAttribute('data-bs-toggle', 'tooltip');
             cardTitle.setAttribute('data-bs-placement', 'top');
             cardTitle.setAttribute('title', item.title);
@@ -290,16 +356,19 @@
             const cardText = document.createElement('p');
             cardText.className = 'card-text text-muted';
             cardText.innerHTML = `
-                        <a href="https://www.deutsche-digitale-bibliothek.de/item/${item.id}" target="_blank">${item.id}</a>
-                        <br>
-                        Dataset ${htmlEncode(item.dataset_id)}
+              <dl class="row">
+                <dt class="col-sm-4">Lizenz</dt>
+                <dd class="col-sm-8">${getCcLicenseAbbreviation(item.license)} <a href="${item.license}" target="_blank"><i class="bi bi-arrow-up-right-square"></i></a></dd>
+                <dt class="col-sm-4">Datenset</dt>
+                <dd class="col-sm-8">${htmlEncode(item.dataset_id)}</dd>
+              </dl>
             `;
 
             const addButton = document.createElement('button');
             addButton.className = 'btn btn-success btn-sm mt-auto';
             addButton.textContent = 'Zur Zusammenstellung hinzufügen';
             addButton.addEventListener('click', () => {
-                addToCart(groupTitle, item.id, img.src, item.title);
+                addToCart(groupTitle, item.id, img.src, item.title, item.license);
                 addButton.classList.remove('btn-success');
                 addButton.classList.add('btn-secondary');
                 addButton.textContent = 'Zur Zusammenstellung hinzugefügt';
@@ -376,9 +445,9 @@
             listItem.innerHTML = `
                         <img src="${item.thumbnail}" alt="${htmlEncode(item.title)}" class="img-fluid" style="width: 80px; height: auto; margin-right: 10px;">
                         <div class="ms-2 me-2 flex-fill text-truncate">
-                          <p class="fw-bold mb-1">${htmlEncode(item.group)}</p>
-                          <p class="mb-0">${htmlEncode(item.title)}</p>
-                          <p class="text-muted mb-0"><small>${item.id}</small></p>
+                          <p class="fw-bold mb-1"><a href="https://www.deutsche-digitale-bibliothek.de/item/${item.id}" target="_blank">${htmlEncode(item.title)}</a></p>
+                          <p class="mb-0">${htmlEncode(item.group)}</p>
+                          <p class="text-muted mb-0"><small>${getCcLicenseAbbreviation(item.license)}</small></p>
                         </div>
                         <button class="btn btn-danger btn-sm delete-item"><i class="bi bi-trash"></i></button>
             `;
@@ -397,12 +466,13 @@
     }
 
     // Produkt zum Warenkorb hinzufügen
-    function addToCart(group, id, thumbnail, title) {
+    function addToCart(group, id, thumbnail, title, license) {
         const item = {
             group: document.querySelector('#group-' + group).textContent,
             id,
             thumbnail,
-            title
+            title,
+            license
         };
         cart.push(item);
         saveCart();
