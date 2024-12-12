@@ -358,9 +358,9 @@
             cardText.innerHTML = `
               <dl class="row">
                 <dt class="col-sm-4">Lizenz</dt>
-                <dd class="col-sm-8">${getCcLicenseAbbreviation(item.license)} <a href="${item.license}" target="_blank"><i class="bi bi-arrow-up-right-square"></i></a></dd>
+                <dd class="col-sm-8">${getCcLicenseAbbreviation(item.license)} <small><a href="${item.license}" target="_blank"><i class="bi bi-arrow-up-right-square"></i></a></small></dd>
                 <dt class="col-sm-4">Datenset</dt>
-                <dd class="col-sm-8">${htmlEncode(item.dataset_id)}</dd>
+                <dd class="col-sm-8">${htmlEncode(item.dataset_id)} <small><a href="https://www.deutsche-digitale-bibliothek.de/searchresults?query=dataset_id%3A${htmlEncode(item.dataset_id)}" target="_blank"><i class="bi bi-arrow-up-right-square"></i></a></small></dd>
               </dl>
             `;
 
@@ -533,7 +533,6 @@
         // IDs kopieren
         document.getElementById('copy-ids').addEventListener('click', () => {
             const ids = cart.map((item) => item.id).join('\n');
-            // console.log(ids);
             navigator.clipboard.writeText(ids).then(() => {
                 showAlert(`DDB-IDs wurden in die Zwischenablage kopiert.`, 'success');
             });
