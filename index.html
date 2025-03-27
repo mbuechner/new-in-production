@@ -314,8 +314,18 @@
 
         const carouselContainer = document.createElement('div');
         carouselContainer.className = 'carousel-container border bg-light p-5';
+
+        let basePath = window.location.pathname;
         
-        const basePath = window.location.pathname.replace(/\/[^\/]*$/, "/");
+        // Wenn der Pfad mit .html endet → entferne den Dateinamen
+        if (basePath.match(/\.html$/)) {
+          basePath = basePath.substring(0, basePath.lastIndexOf("/") + 1);
+        }
+        
+        // Ansonsten: sicherstellen, dass ein Slash am Ende steht
+        if (!basePath.endsWith("/")) {
+          basePath += "/";
+        }
 
         items.forEach((item) => {
             const card = document.createElement('div');
