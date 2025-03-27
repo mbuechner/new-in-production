@@ -315,9 +315,7 @@
         const carouselContainer = document.createElement('div');
         carouselContainer.className = 'carousel-container border bg-light p-5';
         
-        const aktuellerPfad = window.location.pathname; // z.B. /galerie/index.html
-        const basisPfad = aktuellerPfad.substring(0, aktuellerPfad.lastIndexOf("/") + 1); // /galerie/
-        const errorImagePath = basisPfad + 'error.svg';
+        const basePath = window.location.pathname.replace(/\/[^\/]*$/, "/");
 
         items.forEach((item) => {
             const card = document.createElement('div');
@@ -332,7 +330,7 @@
             img.src = getThumbnailUrl(item.preview_store);
             img.alt = item.title;
             img.style.cssText = 'object-fit: cover; object-position: top;';
-            img.setAttribute('onerror', 'this.src=\'' + errorImagePath + '\';');
+            img.setAttribute('onerror', 'this.src=\'' + basePath + 'error.svg' + '\';');
             img.setAttribute('loading', 'lazy');
 
             // Warten, bis das Bild vollständig geladen ist
