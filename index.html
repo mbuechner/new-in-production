@@ -86,7 +86,7 @@
           </ul>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" id="copy-ids">DDB-IDs kopieren</button>
+          <button class="btn btn-secondary" id="copy-ids">Alle DDB-IDs kopieren</button>
           <button class="btn btn-danger" onclick="new bootstrap.Modal(document.getElementById('confirmModal')).show()">Alles löschen</button>
           <button class="btn btn-primary" data-bs-dismiss="modal" type="button">Schließen</button>
         </div>
@@ -461,10 +461,21 @@
                           <p class="mb-0">${htmlEncode(item.group)}</p>
                           <p class="text-muted mb-0"><small>${getCcLicenseAbbreviation(item.license)}</small></p>
                         </div>
+                        <button class="btn btn-danger btn-sm copy-item me-1"><i class="bi bi-copy"></i></button>
                         <button class="btn btn-danger btn-sm delete-item"><i class="bi bi-trash"></i></button>
             `;
 
             cartItems.appendChild(listItem);
+        });
+
+        // Copy-Buttons
+        cartItems.querySelectorAll('.copy-item').forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                const item = cart[index];
+                navigator.clipboard.writeText(item.id).then(() => {
+                    showAlert(`DDB-ID wurde in die Zwischenablage kopiert.`, 'success');
+                });
+            });
         });
 
         // Löschen-Buttons
